@@ -1,4 +1,4 @@
-package main
+package process
 
 import (
 	"encoding/binary"
@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/VKGQQ/goproject_1/chat/client/utils"
 	"github.com/VKGQQ/goproject_1/chat/common/message"
 )
 
-func login(userId int, userPwd string) (err error) {
+type UserProcess struct{}
+
+func (this *UserProcess) Login(userId int, userPwd string) (err error) {
 	conn, err := net.Dial("tcp", "0.0.0.0:8889")
 	if err != nil {
 		return err
@@ -46,7 +49,10 @@ func login(userId int, userPwd string) (err error) {
 		fmt.Println("conn.Write err:", err)
 		return
 	}
-	mes, err = readPkg(conn)
+	tf := &utils.Transfer{
+		Conn: conn,
+	}
+	mes, err = tf.ReadPkg()
 	if err != nil {
 		fmt.Println("readPkg err:", err)
 		return
@@ -54,7 +60,8 @@ func login(userId int, userPwd string) (err error) {
 	var loginResMes message.LoginResMes
 	err = json.Unmarshal([]byte(mes.Data), &loginResMes)
 	if loginResMes.Code == 200 {
-		fmt.Println("登录成功")
+		go serverProcessMes(conn)
+		ShowMenu()
 	} else if loginResMes.Code == 500 {
 		fmt.Println(loginResMes.Error)
 	}

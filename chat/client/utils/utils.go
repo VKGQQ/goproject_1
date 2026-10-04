@@ -14,7 +14,7 @@ type Transfer struct {
 	Buf  [8096]byte
 }
 
-func (this *Transfer) readPkg() (mes message.Message, err error) {
+func (this *Transfer) ReadPkg() (mes message.Message, err error) {
 	_, err = this.Conn.Read(this.Buf[:4])
 	if err != nil {
 		return

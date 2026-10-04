@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/VKGQQ/goproject_1/chat/client/process"
 )
 
 var userId int
@@ -10,8 +12,7 @@ var userPwd string
 
 func main() {
 	var key int
-	var loop = true
-	for loop {
+	for {
 		fmt.Println("----------欢迎登录多人聊天系统----------")
 		fmt.Println("\t\t\t 1 登录聊天室")
 		fmt.Println("\t\t\t 2 注册用户")
@@ -24,7 +25,11 @@ func main() {
 			fmt.Scanln(&userId)
 			fmt.Println("请输入用户的密码")
 			fmt.Scanln(&userPwd)
-			login(userId, userPwd)
+			up := &process.UserProcess{}
+			err := up.Login(userId, userPwd)
+			if err != nil {
+				return
+			}
 		case 2:
 			fmt.Println("注册用户")
 		case 3:
