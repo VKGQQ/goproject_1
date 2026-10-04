@@ -17,7 +17,9 @@ func (this *UserProcess) Login(userId int, userPwd string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	defer func(conn net.Conn) {
+		_ = conn.Close()
+	}(conn)
 	var mes message.Message
 	mes.Type = message.LoginMesType
 	var loginMes message.LoginMes
