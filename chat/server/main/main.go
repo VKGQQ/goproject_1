@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"net"
+
+	"github.com/VKGQQ/goproject_1/chat/server/model"
 )
 
 func handleConn(conn net.Conn) {
-	defer conn.Close()
+	defer func(conn net.Conn) {
+		_ = conn.Close()
+	}(conn)
 	processor := &Processor{
 		Conn: conn,
 	}
@@ -17,14 +21,22 @@ func handleConn(conn net.Conn) {
 	}
 }
 
+func initUserDao() {
+	model.MyUserDao = model.NewUserDao(redisClient)
+}
+
 func main() {
+	initRedis("127.0.0.1:6379", "", 0, 20)
+	initUserDao()
 	fmt.Println("服务器在8889端口监听")
 	listen, err := net.Listen("tcp", "0.0.0.0:8889")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	defer listen.Close()
+	defer func(listen net.Listener) {
+		_ = listen.Close()
+	}(listen)
 	for {
 		fmt.Println("等待客户端连接服务器......")
 		conn, err := listen.Accept()

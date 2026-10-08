@@ -9,6 +9,7 @@ import (
 
 var userId int
 var userPwd string
+var userName string
 
 func main() {
 	var key int
@@ -32,6 +33,17 @@ func main() {
 			}
 		case 2:
 			fmt.Println("注册用户")
+			fmt.Println("请输入用户ID：")
+			fmt.Scanln(&userId)
+			fmt.Println("请输入用户密码：")
+			fmt.Scanln(&userPwd)
+			fmt.Println("请输入用户昵称：")
+			fmt.Scanln(&userName)
+			up := &process.UserProcess{}
+			err := up.Register(userId, userPwd, userName)
+			if err != nil {
+				return
+			}
 		case 3:
 			os.Exit(0)
 		default:
