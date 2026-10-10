@@ -1,28 +1,37 @@
 package process
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
 
 	"github.com/VKGQQ/goproject_1/chat/client/utils"
+	"github.com/VKGQQ/goproject_1/chat/common/message"
 )
 
 func ShowMenu() {
 	for {
-		fmt.Println("----------恭喜登录成功----------")
+		fmt.Println("----------恭喜您登录成功---------")
 		fmt.Println("----------1.显示在线用户列表-----")
 		fmt.Println("----------2.发送信息----------")
 		fmt.Println("----------3.信息列表----------")
 		fmt.Println("----------4.退出系统----------")
 		fmt.Println("请选择(1-4):")
 		var key int
+		var content string
+		smsProcess := &SmsProcess{}
 		fmt.Scanln(&key)
 		switch key {
 		case 1:
-			fmt.Println("显示在线用户列表")
+			outputOnlineUser()
 		case 2:
-			fmt.Println("发送信息")
+			fmt.Println("请输入您想群发的消息")
+			fmt.Scanln(&content)
+			err := smsProcess.SendGroupMes(content)
+			if err != nil {
+				return
+			}
 		case 3:
 			fmt.Println("信息列表")
 		case 4:
@@ -39,12 +48,24 @@ func serverProcessMes(Conn net.Conn) {
 		Conn: Conn,
 	}
 	for {
-		fmt.Println("客户端正在等待服务器发送的信息......")
 		mes, err := tf.ReadPkg()
 		if err != nil {
 			fmt.Println("tf.ReadPkg err:", err)
 			return
 		}
-		fmt.Println("mes:", mes)
+		switch mes.Type {
+		case message.NotifyUserStatusMesType:
+			var notifyUserStatusMes message.NotifyUserStatusMes
+			err := json.Unmarshal([]byte(mes.Data), &notifyUserStatusMes)
+			if err != nil {
+				return
+			}
+			updateUserStatus(&notifyUserStatusMes)
+			outputOnlineUser()
+		case message.SmsTransferMesType:
+			outputGroupMes(&mes)
+		default:
+			fmt.Println("服务器返回未知消息类型")
+		}
 	}
 }

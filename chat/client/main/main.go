@@ -15,10 +15,10 @@ func main() {
 	var key int
 	for {
 		fmt.Println("----------欢迎登录多人聊天系统----------")
-		fmt.Println("\t\t\t 1 登录聊天室")
-		fmt.Println("\t\t\t 2 注册用户")
-		fmt.Println("\t\t\t 3 退出系统")
-		fmt.Println("\t\t\t 请选择(1-3):")
+		fmt.Println("\t 1 登录聊天室")
+		fmt.Println("\t 2 注册用户")
+		fmt.Println("\t 3 退出系统")
+		fmt.Printf("请选择(1-3):")
 		fmt.Scanln(&key)
 		switch key {
 		case 1:
@@ -32,7 +32,6 @@ func main() {
 				return
 			}
 		case 2:
-			fmt.Println("注册用户")
 			fmt.Println("请输入用户ID：")
 			fmt.Scanln(&userId)
 			fmt.Println("请输入用户密码：")

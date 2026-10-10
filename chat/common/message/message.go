@@ -1,10 +1,19 @@
 package message
 
 const (
-	LoginMesType       = "LoginMes"
-	LoginResMesType    = "LoginResMes"
-	RegisterMesType    = "RegisterMes"
-	RegisterResMesType = "RegisterResMes"
+	LoginMesType            = "LoginMes"
+	LoginResMesType         = "LoginResMes"
+	RegisterMesType         = "RegisterMes"
+	RegisterResMesType      = "RegisterResMes"
+	NotifyUserStatusMesType = "NotifyUserStatusMes"
+	SmsMesType              = "SmsMes"
+	SmsTransferMesType      = "SmsTransferMes"
+)
+
+const (
+	UserOnline = iota
+	UserOffline
+	UserBusyStatus
 )
 
 type Message struct {
@@ -30,4 +39,19 @@ type RegisterMes struct {
 type RegisterResMes struct {
 	Code  int    `json:"code"`  // 返回状态码 400 表示该用户已经占有 200表示注册成功
 	Error string `json:"error"` // 返回错误信息
+}
+
+type NotifyUserStatusMes struct {
+	UserId int `json:"userId"`
+	Status int `json:"status"`
+}
+
+type SmsMes struct {
+	User    `json:"user"`
+	Content string `json:"content"`
+}
+
+type SmsTransferMes struct {
+	User    `json:"user"`
+	Content string `json:"content"`
 }

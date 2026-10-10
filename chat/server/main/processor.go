@@ -26,6 +26,9 @@ func (this *Processor) serverProcessMes(mes *message.Message) (err error) {
 			Conn: this.Conn,
 		}
 		err = up.ServerProcessRegister(mes)
+	case message.SmsMesType:
+		smsProcess := &process.SmsProcess{}
+		smsProcess.SendGroupMes(mes)
 	default:
 		fmt.Println("消息类型不存在，无法处理......")
 	}
@@ -43,10 +46,9 @@ func (this *Processor) serve() (err error) {
 			if err == io.EOF {
 				fmt.Println("客户端退出，服务端也退出")
 				return
-			} else {
-				fmt.Println("读包出错，连接异常退出:", err)
-				return
 			}
+			fmt.Println("读包出错，连接异常退出:", err)
+			return
 		}
 		fmt.Printf("mes=%v\n", mes)
 		err = this.serverProcessMes(&mes)
@@ -55,5 +57,4 @@ func (this *Processor) serve() (err error) {
 			return
 		}
 	}
-	return
 }
