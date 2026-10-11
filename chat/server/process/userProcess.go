@@ -1,23 +1,56 @@
 package process
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
+	"sync"
+	"time"
 
 	"github.com/VKGQQ/goproject_1/chat/common/message"
 	"github.com/VKGQQ/goproject_1/chat/server/model"
-	"github.com/VKGQQ/goproject_1/chat/server/utils"
 )
+
+// connWriteTimeout 单次发包（含帧头和帧体）的写超时时间。
+// 必须设置：否则对端网络卡住时 Conn.Write 会无限期阻塞，
+// 持有的 writeMu 也会一直不释放，导致其他 goroutine 无法给该用户发包。
+const connWriteTimeout = 5 * time.Second
 
 type UserProcess struct {
 	Conn   net.Conn
 	UserId int
+	// writeMu 是“每连接一把”的写锁：同一连接的帧头+帧体必须在
+	// 持锁期间连续写出，保证多个 goroutine（本人响应、群发转发、上线通知）
+	// 并发发包时不会出现字节交错导致的帧失步。
+	// 不同连接各有一把锁，互不影响、可完全并行。
+	writeMu sync.Mutex
+}
+
+// Send 是向该用户连接写入一个完整协议帧的唯一入口。
+// 帧格式：4 字节大端长度 + JSON 包体。
+func (this *UserProcess) Send(data []byte) error {
+	this.writeMu.Lock()
+	defer this.writeMu.Unlock()
+	// 每次发包前设置绝对截止时间，避免慢客户端把锁长期占住
+	if err := this.Conn.SetWriteDeadline(time.Now().Add(connWriteTimeout)); err != nil {
+		return err
+	}
+	var header [4]byte
+	binary.BigEndian.PutUint32(header[:], uint32(len(data)))
+	if _, err := this.Conn.Write(header[:]); err != nil {
+		return err
+	}
+	if _, err := this.Conn.Write(data); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (this *UserProcess) NotifyOtherOnlineUser(userId int) {
-	for id, up := range userMgr.onlineUsers {
+	// 基于快照在锁外遍历并发送通知，避免持读锁做网络 IO
+	for id, up := range userMgr.GetAllOnlineUsers() {
 		if id == userId {
 			continue
 		}
@@ -42,11 +75,7 @@ func (this *UserProcess) NotifyMeOnline(userId int) {
 		fmt.Println("json.Marshal err:", err)
 		return
 	}
-	tf := utils.Transfer{
-		Conn: this.Conn,
-	}
-	err = tf.WritePkg(data)
-	if err != nil {
+	if err = this.Send(data); err != nil {
 		fmt.Println("NotifyMeOnline err:", err)
 	}
 }
@@ -78,9 +107,7 @@ func (this *UserProcess) ServerProcessLogin(mes *message.Message) (err error) {
 		this.UserId = user.UserId
 		userMgr.AddOnlineUser(this)
 		this.NotifyOtherOnlineUser(this.UserId)
-		for id := range userMgr.onlineUsers {
-			loginResMes.UsersId = append(loginResMes.UsersId, id)
-		}
+		loginResMes.UsersId = userMgr.OnlineUserIds()
 		fmt.Println(user, "登录成功")
 	}
 	data, err := json.Marshal(loginResMes)
@@ -94,10 +121,7 @@ func (this *UserProcess) ServerProcessLogin(mes *message.Message) (err error) {
 		fmt.Println("json.Marshal err:", err)
 		return
 	}
-	tf := &utils.Transfer{
-		Conn: this.Conn,
-	}
-	err = tf.WritePkg(data)
+	err = this.Send(data)
 	return
 }
 
@@ -134,9 +158,6 @@ func (this *UserProcess) ServerProcessRegister(mes *message.Message) (err error)
 		fmt.Println("json.Marshal err:", err)
 		return
 	}
-	tf := &utils.Transfer{
-		Conn: this.Conn,
-	}
-	err = tf.WritePkg(data)
+	err = this.Send(data)
 	return
 }

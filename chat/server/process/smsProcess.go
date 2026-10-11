@@ -1,13 +1,10 @@
 package process
 
 import (
-	"fmt"
-	"net"
-
 	"encoding/json"
+	"fmt"
 
 	"github.com/VKGQQ/goproject_1/chat/common/message"
-	"github.com/VKGQQ/goproject_1/chat/server/utils"
 )
 
 type SmsProcess struct {
@@ -24,29 +21,22 @@ func (this *SmsProcess) SendGroupMes(mes *message.Message) {
 		fmt.Println("json.Unmarshal err=", err)
 		return
 	}
-
+	mes.Type = message.SmsTransferMesType
 	data, err := json.Marshal(mes)
 	if err != nil {
 		fmt.Println("json.Marshal err=", err)
 		return
 	}
 
-	for id, up := range userMgr.onlineUsers {
+	// 基于快照在锁外遍历转发，避免持读锁做网络 IO
+	for id, up := range userMgr.GetAllOnlineUsers() {
 		//这里，还需要过滤到自己,即不要再发给自己
 		if id == smsMes.UserId {
 			continue
 		}
-		this.SendMesToEachOnlineUser(data, up.Conn)
-	}
-}
-func (this *SmsProcess) SendMesToEachOnlineUser(data []byte, conn net.Conn) {
-
-	//创建一个Transfer 实例，发送data
-	tf := &utils.Transfer{
-		Conn: conn, //
-	}
-	err := tf.WritePkg(data)
-	if err != nil {
-		fmt.Println("转发消息失败 err=", err)
+		// 走收信人自己的写锁，保证帧完整
+		if err := up.Send(data); err != nil {
+			fmt.Println("转发消息失败 err=", err)
+		}
 	}
 }
